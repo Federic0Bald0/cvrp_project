@@ -1,5 +1,6 @@
 # coding: utf-8
 import os
+import numpy as np
 from math import acos, cos, sqrt, pi
 from Graph import Graph
 from collections import deque
@@ -10,12 +11,13 @@ def parse_cvrp(path):
     with open(path, 'r') as f:
         build_graph(f)
 
+
 def build_graph(tspfile):
 
     g = Graph()
-    
+
     for line in tspfile:
-        words   = deque(line.split())
+        words = deque(line.split())
         keyword = words.popleft().strip(": ")
         if keyword == "NAME":
             g.set_name(" ".join(words).strip(": "))
@@ -45,6 +47,7 @@ def build_graph(tspfile):
         if keyword == "EOF":
             break
 
+
 def parse_euc2d(graph, tspfile):
 
     dimension = graph.get_dimension()
@@ -72,32 +75,31 @@ def parse_euc2d(graph, tspfile):
 def parse_w_matrix(graph, format, tspfile):
 
     dimension = graph.get_dimension()
-    matrix = []
+    matrix_temp = []
     for line in tspfile:
-        words   = deque(line.split())
+        words = deque(line.split())
         keyword = words.popleft().strip(": ")
         if keyword == "DEMAND_SECTION" or \
            keyword == "DISPLAY_DATA_SECTION":
             break
         row = [float(el) for el in line.split()]
-        matrix.append(row)
+        matrix_temp += row
+    matrix_temp = np.array(matrix_temp)
+    matrix = np.zeros((dimension, dimension))
     if format == "FULL_MATRIX":
-        for i in range(dimension-1):
-            for j in range(dimension-1):
-                graph.add_edge(i, j, float(matrix[i][j]))
+        matrix = matrix_temp.reshape((dimension, dimension))
 
-    # elif format == "UPPER_ROW" or format == "LOWER_DIAG_ROW":
-    #     i = 0
-    #     for line in tspfile:
-    #         words   = deque(line.split())
-    #         keyword = words.popleft().strip(": ")
-    #         if keyword == "DEMAND_SECTION":
-    #             break
-    #         weights = line.split()
-    #         for j in range(len(weights)):
-    #             graph.add_edge(i, j, float(weights[j]))
-    #         i += 1
-    #     # TODO FIX
+    elif format == "LOWER_DIAG_ROW":
+        indices = np.tril_indices(dimension)
+        matrix[indices] = matrix_temp
+
+    elif format == "UPPER_ROW":
+        indices = np.triu_indices(dimension, 1)
+        matrix[indices] = matrix_temp
+
+    for i in range(dimension):
+            for j in range(dimension):
+                graph.add_edge(i, j, float(matrix[i][j]))
 
 
 def parse_geo(graph, tspfile):
@@ -137,9 +139,9 @@ def parse_geo(graph, tspfile):
             q1 = cos(longitude_p - longitude_q)
             q2 = cos(latitude_p - latitude_q)
             q3 = cos(latitude_p + latitude_q)
-            dij = int(RRR * acos(0.5 * ((0.1 + q1) * q2 - (1.0 - q1) * q3))
-                  + 1.0)
-            
+            dij = int(RRR * acos(0.5 * ((0.1 + q1) * q2 - (1.0 - q1) * q3)) +
+                      1.0)
+
             graph.add_edge(i, j, dij)
 
 
