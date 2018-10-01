@@ -72,26 +72,32 @@ def parse_euc2d(graph, tspfile):
 def parse_w_matrix(graph, format, tspfile):
 
     dimension = graph.get_dimension()
-
+    matrix = []
+    for line in tspfile:
+        words   = deque(line.split())
+        keyword = words.popleft().strip(": ")
+        if keyword == "DEMAND_SECTION" or \
+           keyword == "DISPLAY_DATA_SECTION":
+            break
+        row = [float(el) for el in line.split()]
+        matrix.append(row)
     if format == "FULL_MATRIX":
-        i = 0
-        for line in tspfile:
-            if i == dimension-1:
-                break
-            weights = line.split()
-            for j in range(len(weights)):
-                graph.add_edge(i, j, float(weights[j]))
+        for i in range(dimension-1):
+            for j in range(dimension-1):
+                graph.add_edge(i, j, float(matrix[i][j]))
 
-    elif format == "UPPER_ROW" or format == "LOWER_DIAG_ROW":
-        i = 0
-        for line in tspfile:
-            if i == dimension-1:
-                break
-            weights = line.split()
-            for j in range(len(weights)):
-                graph.add_edge(i, j, float(weights[j]))
-            i += 1
-        # TODO FIX
+    # elif format == "UPPER_ROW" or format == "LOWER_DIAG_ROW":
+    #     i = 0
+    #     for line in tspfile:
+    #         words   = deque(line.split())
+    #         keyword = words.popleft().strip(": ")
+    #         if keyword == "DEMAND_SECTION":
+    #             break
+    #         weights = line.split()
+    #         for j in range(len(weights)):
+    #             graph.add_edge(i, j, float(weights[j]))
+    #         i += 1
+    #     # TODO FIX
 
 
 def parse_geo(graph, tspfile):
