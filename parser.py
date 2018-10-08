@@ -9,7 +9,7 @@ from collections import deque
 def parse_cvrp(path):
 
     with open(path, 'r') as f:
-        build_graph(f)
+        return build_graph(f)
 
 
 def build_graph(tspfile):
@@ -46,6 +46,7 @@ def build_graph(tspfile):
                 parse_w_matrix(g, w_format, tspfile)
         if keyword == "EOF":
             break
+    return g
 
 
 def parse_euc2d(graph, tspfile):
@@ -145,8 +146,9 @@ def parse_geo(graph, tspfile):
             graph.add_edge(i, j, dij)
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    files = os.listdir('./cvrp')
-    for f in files:
-        parse_cvrp("./cvrp/" + f)
+#     files = os.listdir('./cvrp')
+#     for f in files:
+#         print f
+#         parse_cvrp("./cvrp/" + f)
