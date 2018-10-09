@@ -68,9 +68,10 @@ def parse_euc2d(graph, tspfile):
     for i in range(dimension):
         p = temp_vertex[i]
         for j in range(dimension):
-            q = temp_vertex[j]
-            dist = sqrt(((p[0] - q[0])**2) + (p[1] - q[1])**2)
-            graph.add_edge(i, j, dist)
+            if i != j:
+                q = temp_vertex[j]
+                dist = sqrt(((p[0] - q[0])**2) + (p[1] - q[1])**2)
+                graph.add_edge(i, j, dist)
 
 
 def parse_w_matrix(graph, format, tspfile):
@@ -142,7 +143,6 @@ def parse_geo(graph, tspfile):
             q3 = cos(latitude_p + latitude_q)
             dij = int(RRR * acos(0.5 * ((0.1 + q1) * q2 - (1.0 - q1) * q3)) +
                       1.0)
-
             graph.add_edge(i, j, dij)
 
 
