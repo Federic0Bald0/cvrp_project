@@ -17,7 +17,7 @@ def clarke_wright_cvrp(map):
                       map.get_value(0, j) - \
                       map.get_value(i, j)
             savings.append((float(payload), i, j))
-    savings.sort(key=lambda x: x[0], reverse=True)
+    savings.sort(key=lambda x: x[0])
     for x in range(1, dimension):
         routes.append([0, x, 0])
     for saving in savings:
@@ -44,11 +44,16 @@ def clarke_wright_cvrp(map):
                     routes.append(list(new_route))
                     # update saving
                     savings.remove(saving)
-                    savings.append((cost + map.get_value(i, 0)
-                                    - map.get_value(i, j), i, j))
-                    savings.sort(key=lambda x: x[0], reverse=True)
+                    savings.append((float(cost + map.get_value(i, 0)
+                                    - map.get_value(i, j)), i, j))
+                    savings.sort(key=lambda x: x[0])
                     break
     print routes
+    tot_cost = 0
+    for route in routes:
+        for u in range(len(route)-1):
+            tot_cost += map.get_value(route[u], route[u+1])
+    print tot_cost
 
-map = parse_cvrp('cvrp/att-n48-k4.vrp')
+map = parse_cvrp('cvrp/bays-n29-k5.vrp')
 clarke_wright_cvrp(map)
