@@ -1,8 +1,10 @@
 import numpy as np
 import itertools
 import random
+import math
 import sys
 from parser import parse_cvrp
+from Graph import Graph
 
 
 def held_karp(map):
@@ -23,7 +25,7 @@ def held_karp(map):
 
     # Set transition cost from initial state
     for k in range(1, n):
-        C[(1 << k, k)] = (map.get_value(k, 1), 0)
+        C[(1 << k, k)] = (map.get_distance(k, 1), 0)
 
     # Iterate subsets of increasing length and store intermediate results
     # in classic dynamic programming manner
@@ -42,16 +44,15 @@ def held_karp(map):
                 for m in subset:
                     if m == 0 or m == k:
                         continue
-                    res.append((C[(prev, m)][0] + map.get_value(m, k), m))
+                    res.append((C[(prev, m)][0] + map.get_distance(m, k), m))
                 C[(bits, k)] = min(res)
-
     # We're interested in all bits but the least significant (the start state)
     bits = (2**n - 1) - 1
 
     # Calculate optimal cost
     res = []
     for k in range(1, n):
-        res.append((C[(bits, k)][0] + map.get_value(k, 1), k))
+        res.append((C[(bits, k)][0] + map.get_distance(k, 1), k))
     opt, parent = min(res)
 
     # Backtrack to find full path
@@ -82,48 +83,65 @@ def get_cost_tsp_path(map, u, v, tsp_path):
         k += 1
     path_cost = 0
     while k >= l and k < u:
-        path_cost += map.get_value(k, k+1)
+        path_cost += map.get_distance(k, k+1)
         k += 1
     return path_cost
 
 
-def dijkstra(map, tsp_path):
+def shortest_path(map, tsp_path):
     dimension = map.get_dimension()
     capacity = map.get_capacity()
+    d = [float('inf')] * dimension
+    pi = [None] * dimension
+    depot = 0
     routes = []
     cost = 0
-    possible_path = []
-    while (len(tsp_path)) >= capacity:
-        for i in range(1, len(tsp_path)):
-            j = i + capacity
-            if j > len(tsp_path):
-                j = j % capacity
+    distances = np.zeros(shape=(dimension, dimension))
+    for i in range(len(tsp_path)):
+        for j in range(i, len(tsp_path)):
+            if i != j:
                 u = tsp_path[i]
                 v = tsp_path[j]
                 distance_u_v = get_cost_tsp_path(map, u, v, tsp_path)
-                distance = distance_u_v + map.get_value(0, u) + map.get_value(0, v)
-                possible_path.append((distance, [u, v]))
-        possible_path.sort(key=lambda x: x[0], reverse=True)
-        selected = possible_path.pop()
-        cost += selected[0]
-        routes.append(selected[1])
-        remove_list = []
-        for k in range(len(tsp_path)-1):
-            if tsp_path[k] != u:
-                continue
-            elif tsp_path[k] == v:
+                distance = distance_u_v + map.get_distance(0, u) + map.get_distance(0, v)
+                distances[u][v] = distance
+    d[0] = 0
+    for i in range(dimension):
+        j = i
+        load = 0
+        while True:
+            cost = distances[i][j] 
+            if load <= capacity and d[i] + cost < d[j]:
+                d[j] = d[i] + cost
+                pi[j] = i 
+            j = j + 1
+            load += 1
+
+            if j >= dimension or load > capacity:
                 break
-            else:
-                remove_list.append(u)
-                u = tsp_path[k+1]
-        for i in remove_list:
-            tsp_path.remove(i)
-
-    return routes, cost
+    return d, pi
 
 
+def split(pi, tsp_path):
+    routes = []
+    j = len(pi) - 1
+    while True:
+        route = []
+        print
+        for k in range(pi[j], j):
+            route.append(tsp_path[k])
+        routes.append(route)
+        j = pi[j]
+        if j == 0:
+            break
+    return routes
+    
 
-map = parse_cvrp('cvrp/ulysses-n16-k3.vrp')
-opt, path = held_karp(map)
-print path
-print dijkstra(map, path)
+
+map = parse_cvrp('cvrp/ulysses-n22-k4.vrp')
+# opt, path = held_karp(map)
+# path.remove(0)
+# print path
+d, pi = shortest_path(map, [16, 3, 17, 7, 12, 13, 14, 4, 10, 8, 9, 19, 20, 18, 6, 5, 11, 15, 21, 2, 1])
+routes = split(pi, [16, 3, 17, 7, 12, 13, 14, 4, 10, 8, 9, 19, 20, 18, 6, 5, 11, 15, 21, 2, 1])
+print routes

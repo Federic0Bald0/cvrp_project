@@ -1,9 +1,30 @@
 # coding: utf-8
 import os
 import numpy as np
-from math import acos, cos, sqrt, pi
+from math import acos, cos, sqrt, pi, ceil
 from Graph import Graph
 from collections import deque
+
+
+def parse_demand(graph, path):
+    with open(path, 'r') as f:
+        for line in f:
+            words = line.split()
+            if words[0] == "DEMAND_SECTION":
+                demands = build_demand(f, graph.get_dimension())
+                graph.set_demand(demands)
+            if words[0] == "EOF":  
+                return graph
+            
+def build_demand(tspfile, dimension):
+    demands = [0] * dimension
+    for i, line in enumerate(tspfile):
+        demand = line.split()
+        if i < dimension:  
+            demands[int(demand[0])-1] = int(demand[1])
+        else:
+            return demands
+
 
 
 def parse_cvrp(path):
@@ -13,23 +34,24 @@ def parse_cvrp(path):
 
 
 def build_graph(tspfile):
-
-    g = Graph()
-
+    # build the graph that will be used by the cvrp algorithms
+    graph = Graph()
+    # -------------------------------------------------------------------------
+    # parse the vrp file
     for line in tspfile:
         words = deque(line.split())
         keyword = words.popleft().strip(": ")
-        if keyword == "NAME":
-            g.set_name(" ".join(words).strip(": "))
+        # if keyword == "NAME":
+        #     g.set_name(" ".join(words).strip(": "))
         if keyword == "CAPACITY":
-            g.set_capacity(int(" ".join(words).strip(": ")))
+            graph.set_capacity(int(" ".join(words).strip(": ")))
         if keyword == "TYPE":
             if "CVRP" != " ".join(words).strip(": "):
                 print "Format error"
                 return
         if keyword == "DIMENSION":
             dimension = int(" ".join(words).strip(": "))
-            g.set_dimension(dimension)
+            graph.set_dimension(dimension)
         if keyword == "EDGE_WEIGHT_TYPE":
             w_type = " ".join(words).strip(": ")
         if keyword == "EDGE_WEIGHT_FORMAT":
@@ -38,20 +60,25 @@ def build_graph(tspfile):
             n_c_type = " ".join(words).strip(": ")
         if keyword == "NODE_COORD_SECTION":
             if w_type == "EUC_2D":
-                parse_euc2d(g, tspfile)
+                dist_matrix =parse_euc2d(dimension, graph, tspfile)
             if w_type == "GEO":
-                parse_geo(g, tspfile)
+                dist_matrix = parse_geo(dimension, graph, tspfile)
         if keyword == "EDGE_WEIGHT_SECTION":
             if w_type == "EXPLICIT":
-                parse_w_matrix(g, w_format, tspfile)
+                dist_matrix = parse_w_matrix(dimension, graph, w_format, tspfile)
         if keyword == "EOF":
             break
-    return g
+    # -------------------------------------------------------------------------
+    # building the graph using the distances matrix
+    for i in range(dimension):
+            for j in range(dimension):
+                graph.add_edge(i, j, float(dist_matrix[i][j]))
+    return graph
 
 
-def parse_euc2d(graph, tspfile):
-
-    dimension = graph.get_dimension()
+def parse_euc2d(dimension, graph, tspfile):
+    # -------------------------------------------------------------------------
+    # for each vertex store its value in x and y 
     temp_vertex = [None] * dimension
     i = 1
     for line in tspfile:
@@ -64,49 +91,72 @@ def parse_euc2d(graph, tspfile):
             i += 1
         else:
             break
-    # creating vertex
+    # -------------------------------------------------------------------------
+    # store in the matrix the distances between nodes
+    dist_matrix = np.zeros((dimension, dimension))
     for i in range(dimension):
         p = temp_vertex[i]
         for j in range(dimension):
             if i != j:
                 q = temp_vertex[j]
-                dist = sqrt(((p[0] - q[0])**2) + (p[1] - q[1])**2)
-                graph.add_edge(i, j, dist)
+                xd = p[0] - q[0]
+                yd = p[1] - q[1]
+                dist = ceil(sqrt( xd*xd + yd*yd))
+                dist_matrix[i][j] = dist
+    return dist_matrix
 
 
-def parse_w_matrix(graph, format, tspfile):
-
-    dimension = graph.get_dimension()
-    matrix_temp = []
+def parse_w_matrix(dimension, graph, format, tspfile):
+    # -------------------------------------------------------------------------
+    # build a vectoer considering all elements of the distance matrix, 
+    # regardless of the matrix structuture
+    vector_temp = []
     for line in tspfile:
         words = deque(line.split())
         keyword = words.popleft().strip(": ")
-        if keyword == "DEMAND_SECTION" or \
-           keyword == "DISPLAY_DATA_SECTION":
+    # -------------------------------------------------------------------------
+    # distance section is finished
+        if keyword == "DISPLAY_DATA_SECTION" or keyword == "DEMAND_SECTION":
             break
-        row = [float(el) for el in line.split()]
-        matrix_temp += row
-    matrix_temp = np.array(matrix_temp)
-    matrix = np.zeros((dimension, dimension))
-    if format == "FULL_MATRIX":
-        matrix = matrix_temp.reshape((dimension, dimension))
-
-    elif format == "LOWER_DIAG_ROW":
-        indices = np.tril_indices(dimension)
-        matrix[indices] = matrix_temp
-
+        vector_temp += [float(el) for el in line.split()]
+    dist_matrix = np.zeros((dimension, dimension))
+    # -------------------------------------------------------------------------
+    # the parsing process is the same for lower triangular matrix of full
+    # matrix, while it is different in the case of upper triangular matrix
+    if format == "LOWER_DIAG_ROW" or format == "FULL_MATRIX":
+        i = 0 
+        column = 0
+        row = 0
+        while i < (dimension*dimension + dimension)/2 -1: 
+            dist_matrix[row][column] = vector_temp[i] 
+            dist_matrix[column][row] = vector_temp[i]
+            if row == column:
+                row += 1
+                column = 0
+            else:
+                column += 1
+            i += 1
     elif format == "UPPER_ROW":
-        indices = np.triu_indices(dimension, 1)
-        matrix[indices] = matrix_temp
+        row = 0
+        column = 0
+        diag = 0
+        i = 0
+        while i < (dimension*dimension - dimension)/2 -1: 
+            dist_matrix[row][column] = vector_temp[i] 
+            dist_matrix[column][row] = vector_temp[i]
+            if column == dimension - 1:
+                diag += 1
+                column = diag + 1
+                row += 1
+            else:
+                column +=1 
+            i += 1
+    return dist_matrix
+    
 
-    for i in range(dimension):
-            for j in range(dimension):
-                graph.add_edge(i, j, float(matrix[i][j]))
-
-
-def parse_geo(graph, tspfile):
-
-    dimension = graph.get_dimension()
+def parse_geo(dimension, graph, tspfile):
+    # -------------------------------------------------------------------------
+    # for each vertex store its value in x and y 
     temp_vertex = [None] * dimension
     i = 1
     for line in tspfile:
@@ -119,7 +169,9 @@ def parse_geo(graph, tspfile):
             i += 1
         else:
             break
-    # creating vertex
+    # -------------------------------------------------------------------------
+    # compute the geographical distances 
+    dist_matrix = np.zeros((dimension, dimension))
     for i in range(dimension):
         p = temp_vertex[i]
         deg = int(p[0])
@@ -143,12 +195,14 @@ def parse_geo(graph, tspfile):
             q3 = cos(latitude_p + latitude_q)
             dij = int(RRR * acos(0.5 * ((0.1 + q1) * q2 - (1.0 - q1) * q3)) +
                       1.0)
-            graph.add_edge(i, j, dij)
+            dist_matrix[i][j] = dij
+    return dist_matrix
 
 
 # if __name__ == "__main__":
 
 #     files = os.listdir('./cvrp')
 #     for f in files:
-#         print f
-#         parse_cvrp("./cvrp/" + f)
+#         g = parse_cvrp("./cvrp/" + f)
+#         print g.adj_matrix
+#         print parse_demand(g, "./cvrp/" + f).demands
