@@ -1,12 +1,15 @@
 # coding: utf-8
 
+import time 
 import numpy
 import os
 from parser import parse_cvrp, parse_demand
 from cvrp import clark_wright, route_first_cluster_second
 
+
 if __name__ == "__main__":
 
+    # optimal cost of the solution for istance
     cost = {
         'F-n135-k7.vrp': 1162,
         'F-n72-k4.vrp': 237, 
@@ -25,22 +28,21 @@ if __name__ == "__main__":
         'dantzig-n42-k4.vrp': 1142,
         'bays-n29-k5.vrp': 2963
     }
-
+    # applies the two algorithm to each instance in the cvrp folder
     files = os.listdir('./cvrp')
     for f in files:
         print f
         g = parse_cvrp("./cvrp/" + f)
         g = parse_demand(g, "./cvrp/" + f)
-
+        t0 = time.time() % 60
         routes, cost_app = clark_wright(g)
+        t1 = time.time() % 60
         print routes, cost_app
         print (cost_app - cost[str(f)])/cost[str(f)]
+        print t1 - t0
+        t0 = time.time() % 60
         routes, cost_app = route_first_cluster_second(g)
+        t1 = time.time() % 60
         print routes, cost_app
         print (cost_app - cost[str(f)])/cost[str(f)]
-    # g = parse_cvrp("./cvrp/F-n135-k7.vrp")
-    # g = parse_demand(g, "./cvrp/F-n135-k7.vrp")
-    # routes, cost_app = route_first_cluster_second(g)
-    # check_r = list(set(routes[0]))
-    # print len(check_r) == len(routes[0])
-    # print routes, cost_app
+        print t1 - t0

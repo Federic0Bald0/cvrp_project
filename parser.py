@@ -1,11 +1,15 @@
 # coding: utf-8
+
 import os
 import numpy as np
-from math import acos, cos, sqrt, pi, ceil
 from Graph import Graph
 from collections import deque
+from math import acos, cos, sqrt, pi, ceil
 
 
+# -----------------------------------------------------------------------------
+# PARSE DEMAND
+# demand is parsed separatly for semplicity reason 
 def parse_demand(graph, path):
     with open(path, 'r') as f:
         for line in f:
@@ -15,28 +19,30 @@ def parse_demand(graph, path):
                 graph.set_demand(demands)
             if words[0] == "EOF":  
                 return graph
-            
-def build_demand(tspfile, dimension):
-    demands = [0] * dimension
+
+
+# build the vector of the demands           
+def build_demand(tspfile, n):
+    demands = [0] * n
     for i, line in enumerate(tspfile):
         demand = line.split()
-        if i < dimension:  
+        if i < n:  
             demands[int(demand[0])-1] = int(demand[1])
         else:
             return demands
 
 
-
+# -----------------------------------------------------------------------------
+# PARSE GRAPH
 def parse_cvrp(path):
 
     with open(path, 'r') as f:
         return build_graph(f)
 
 
+# build the graph
 def build_graph(tspfile):
-    # build the graph that will be used by the cvrp algorithms
     graph = Graph()
-    # -------------------------------------------------------------------------
     # parse the vrp file
     for line in tspfile:
         words = deque(line.split())
@@ -68,7 +74,6 @@ def build_graph(tspfile):
                 dist_matrix = parse_w_matrix(dimension, graph, w_format, tspfile)
         if keyword == "EOF":
             break
-    # -------------------------------------------------------------------------
     # building the graph using the distances matrix
     for i in range(dimension):
             for j in range(dimension):
@@ -76,8 +81,8 @@ def build_graph(tspfile):
     return graph
 
 
+# parse graph with euclidean edge weight 
 def parse_euc2d(dimension, graph, tspfile):
-    # -------------------------------------------------------------------------
     # for each vertex store its value in x and y 
     temp_vertex = [None] * dimension
     i = 1
@@ -91,13 +96,13 @@ def parse_euc2d(dimension, graph, tspfile):
             i += 1
         else:
             break
-    # -------------------------------------------------------------------------
     # store in the matrix the distances between nodes
     dist_matrix = np.zeros((dimension, dimension))
     for i in range(dimension):
         p = temp_vertex[i]
         for j in range(dimension):
             if i != j:
+                # compute euclidean distance
                 q = temp_vertex[j]
                 xd = p[0] - q[0]
                 yd = p[1] - q[1]
@@ -106,21 +111,19 @@ def parse_euc2d(dimension, graph, tspfile):
     return dist_matrix
 
 
+# parse full, lower and upper matrix edge weight
 def parse_w_matrix(dimension, graph, format, tspfile):
-    # -------------------------------------------------------------------------
-    # build a vectoer considering all elements of the distance matrix, 
+    # build a vector considering all elements of the distance matrix, 
     # regardless of the matrix structuture
     vector_temp = []
     for line in tspfile:
         words = deque(line.split())
         keyword = words.popleft().strip(": ")
-    # -------------------------------------------------------------------------
-    # distance section is finished
+        # distance section is finished
         if keyword == "DISPLAY_DATA_SECTION" or keyword == "DEMAND_SECTION":
             break
         vector_temp += [float(el) for el in line.split()]
     dist_matrix = np.zeros((dimension, dimension))
-    # -------------------------------------------------------------------------
     # the parsing process is the same for lower triangular matrix of full
     # matrix, while it is different in the case of upper triangular matrix
     if format == "LOWER_DIAG_ROW" or format == "FULL_MATRIX":
@@ -136,6 +139,7 @@ def parse_w_matrix(dimension, graph, format, tspfile):
             else:
                 column += 1
             i += 1
+    # parse upper matrix
     elif format == "UPPER_ROW":
         row = 0
         column = 0
@@ -154,8 +158,8 @@ def parse_w_matrix(dimension, graph, format, tspfile):
     return dist_matrix
     
 
+# parse geographical distances edge weights
 def parse_geo(dimension, graph, tspfile):
-    # -------------------------------------------------------------------------
     # for each vertex store its value in x and y 
     temp_vertex = [None] * dimension
     i = 1
@@ -169,7 +173,6 @@ def parse_geo(dimension, graph, tspfile):
             i += 1
         else:
             break
-    # -------------------------------------------------------------------------
     # compute the geographical distances 
     dist_matrix = np.zeros((dimension, dimension))
     for i in range(dimension):

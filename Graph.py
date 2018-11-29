@@ -1,18 +1,19 @@
 # coding: utf-8
 
 import numpy as np
+
+
 # -----------------------------------------------------------------------------
-# the graph is implemented keeping a representation of both
-# adjancency matrix and adjacency list
+# the graph is implemented keeping using adjacency matrix
 # Since the cases considered are complete graphs the adjancency
 # matrix was used for efficiency reasons
 class Graph:
     """
-    set_capacity: initialize capacity of the graph
+    set_capacity: initialize capacity limit of the graph
 
-    set_dimension: initialize dimension of the graph
+    set_dimension: initialize the dimension of the graph
 
-    get_capacity: returns capacity of the graph
+    get_capacity: returns capacity limit of the graph
 
     get_dimension: returns dimension of the graph
 
